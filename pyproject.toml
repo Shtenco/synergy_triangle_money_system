@@ -1,0 +1,8 @@
+[project]
+name = "synergy-borrower-hunter"
+version = "0.1.0"
+description = "Autonomous DeFi borrower discovery, scoring and refinance quote engine for SYNERGY"
+requires-python = ">=3.11"
+
+[project.scripts]
+synergy-borrower-hunter = "borrower_hunter.cli:main"

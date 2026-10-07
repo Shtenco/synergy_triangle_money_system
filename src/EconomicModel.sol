@@ -2,42 +2,88 @@
 pragma solidity ^0.8.24;
 
 contract EconomicModel {
-    uint256 internal constant WAD=1e18;
-    uint256 internal constant BPS=10000;
+    uint256 internal constant WAD = 1e18;
+    uint256 internal constant BPS = 10_000;
 
-    function liquidityMultiplierWad(
+    function hardCreditCapacityWad(
         uint256 deployBps,
         uint256 collateralFactorBps,
-        uint256 reuseBps,
-        uint256 recursiveTierValueBps
-    ) public pure returns(uint256 multiplierWad,uint256 recursiveCreditWad){
-        require(deployBps<=8000,"DEPLOY");
-        require(collateralFactorBps<=8000,"CF");
-        require(reuseBps<=6500,"REUSE");
-        require(recursiveTierValueBps<=5000,"TIER");
+        uint256 reuseBps
+    ) public pure returns (uint256) {
+        require(deployBps <= 8_000, "DEPLOY");
+        require(collateralFactorBps <= 8_000, "CF");
+        require(reuseBps <= 6_500, "REUSE");
 
-        uint256 deployed=deployBps*WAD/BPS;
-        uint256 firstCredit=deployed*collateralFactorBps/BPS*reuseBps/BPS;
-        uint256 q=collateralFactorBps*reuseBps*recursiveTierValueBps*WAD/(BPS*BPS*BPS);
-        require(q<WAD,"UNSTABLE");
-
-        recursiveCreditWad=firstCredit*WAD/(WAD-q);
-        multiplierWad=2*(deployed+recursiveCreditWad);
+        return WAD
+            * deployBps / BPS
+            * collateralFactorBps / BPS
+            * reuseBps / BPS;
     }
 
-    function baseline() external pure returns(uint256 m,uint256 credit){
-        return liquidityMultiplierWad(8000,6500,5000,2500);
+    function primaryLpTvlMultiplierWad(
+        uint256 deployBps
+    ) public pure returns (uint256) {
+        require(deployBps <= 8_000, "DEPLOY");
+        return 2 * WAD * deployBps / BPS;
     }
 
-    function aggressiveStressSafe() external pure returns(uint256 m,uint256 credit){
-        return liquidityMultiplierWad(8000,8000,6500,2500);
+    function oneCycleHardNavMultiplierWad(
+        uint256 yieldBps,
+        uint256 utilizationBps,
+        uint256 creditInterestBps,
+        uint256 deployBps,
+        uint256 collateralFactorBps,
+        uint256 reuseBps
+    ) public pure returns (uint256) {
+        require(yieldBps <= 5_000, "YIELD");
+        require(utilizationBps <= BPS, "UTIL");
+        require(creditInterestBps <= 10_000, "INTEREST");
+
+        uint256 creditCap = hardCreditCapacityWad(
+            deployBps,
+            collateralFactorBps,
+            reuseBps
+        );
+
+        uint256 yieldIncome = WAD * yieldBps / BPS;
+        uint256 creditIncome = creditCap
+            * utilizationBps / BPS
+            * creditInterestBps / BPS;
+
+        return WAD + yieldIncome + creditIncome;
     }
 
-    function hardNavAfterRetainedInput(uint256 initialHard,uint256 incomingHard) external pure returns(uint256){
-        return initialHard+incomingHard;
+    function aggressiveStressSafeCreditCapacityWad()
+        external
+        pure
+        returns (uint256)
+    {
+        return hardCreditCapacityWad(8_000, 8_000, 6_500);
     }
 
-    function hardNavAfterYield(uint256 hardNav,uint256 yieldBps) external pure returns(uint256){
-        return hardNav + hardNav*yieldBps/BPS;
+    function baseOneCycleMultiplierWad()
+        external
+        pure
+        returns (uint256)
+    {
+        // Scenario only:
+        // 1% realized hard yield per economic cycle,
+        // 80% credit utilization,
+        // 5% hard-denominated interest per credit cycle.
+        return oneCycleHardNavMultiplierWad(
+            100,
+            8_000,
+            500,
+            8_000,
+            8_000,
+            6_500
+        );
+    }
+
+    function hardNavAfterRetainedInput(
+        uint256 initialHard,
+        uint256 incomingHard
+    ) external pure returns (uint256) {
+        return initialHard + incomingHard;
     }
 }
