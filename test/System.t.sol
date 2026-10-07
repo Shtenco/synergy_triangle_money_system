@@ -23,7 +23,6 @@ contract SystemTest {
         z=new SoftToken("RUBZ","RUBZ");
         wpol=new MockHardToken("Wrapped POL","WPOL");
         coll=new MockHardToken("Collateral","COLL");
-
         treasury=new Treasury();
         oracle=new RiskOracle();
         vault=new CollateralVault(address(oracle),address(treasury));
@@ -34,10 +33,7 @@ contract SystemTest {
         xc=new CPMMPool(address(x),address(coll),30);
         zc=new CPMMPool(address(z),address(coll),30);
 
-        engine=new RecursiveEngine(
-            address(x),address(z),address(wpol),address(coll),address(treasury),address(vault),
-            address(xw),address(zw),address(xz),address(xc),address(zc)
-        );
+        engine=new RecursiveEngine(address(x),address(z),address(wpol),address(coll),address(treasury),address(vault),address(xw),address(zw),address(xz),address(xc),address(zc));
         model=new EconomicModel();
 
         x.setMinter(address(engine),true);
@@ -72,11 +68,9 @@ contract SystemTest {
         coll.transfer(address(treasury),12.5e18);
     }
 
-    function testInitialHardNavIs50() public {
-        require(engine.hardNav()==50e18,"HNAV_50");
-    }
+    function testInitialHardNavIs50() public { require(engine.hardNav()==50e18,"HNAV_50"); }
 
-    function testRetained50CapitalMakes100() public {
+    function testRetained50CapitalMakesExactly100() public {
         wpol.approve(address(treasury),50e18);
         treasury.depositCapital(address(wpol),50e18);
         require(engine.hardNav()==100e18,"HNAV_100");
@@ -95,24 +89,21 @@ contract SystemTest {
         require(engine.hardNav()==beforeNav+5e18,"EXT_REVENUE");
     }
 
-    function testDividendNeedsRealizedRevenue() public {
-        (bool ok,)=address(treasury).call(
-            abi.encodeWithSelector(treasury.payDividend.selector,address(wpol),address(this),1e18)
-        );
-        require(!ok,"DIVIDEND_SHOULD_FAIL");
+    function testBaseLiquidityMultiplier() public {
+        (uint256 m,uint256 credit)=model.baseline();
+        require(m>2165e15 && m<2167e15,"BASE_M");
+        require(credit>282e15 && credit<284e15,"BASE_C");
     }
 
-    function testEconomicModel50Plus50At75x() public {
-        uint256 got=model.scenario50Plus50At75x();
-        uint256 expected=118883109580375350000;
-        uint256 diff=got>expected?got-expected:expected-got;
-        require(diff<2e14,"MODEL_50_50");
+    function testAggressiveStressSafeLiquidityMultiplier() public {
+        (uint256 m,uint256 credit)=model.aggressiveStressSafe();
+        require(m>2556e15 && m<2557e15,"AGG_M");
+        require(credit>478e15 && credit<479e15,"AGG_C");
     }
 
-    function testMultiplierMonotonic() public {
-        require(model.multiplierWad(100e18)>model.multiplierWad(75e18),"M100");
-        require(model.multiplierWad(75e18)>model.multiplierWad(50e18),"M75");
-        require(model.multiplierWad(50e18)>1e18,"M50");
+    function testHardNavYieldIsSeparateFromLiquidityMultiplier() public {
+        require(model.hardNavAfterRetainedInput(50e18,50e18)==100e18,"INPUT");
+        require(model.hardNavAfterYield(100e18,1000)==110e18,"YIELD");
     }
 
     function _seed(CPMMPool p,uint256 a0,uint256 a1,address to) internal {

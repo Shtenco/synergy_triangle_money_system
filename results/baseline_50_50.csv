@@ -1,8 +1,3 @@
-scenario,hardnav_wpol
-initial,50
-after_retained_50_input,100
-after_first_order_75x,113.70663265306122
-after_recursive_convergence_75x,118.88310958037535
-after_recursive_convergence_then_20pct_shock,110.38782406883813
-after_recursive_convergence_then_30pct_shock,105.73938703303993
-flow_only_50_input_final_75x,50.18598439586702
+mode,input_hardnav_wpol,hardnav_after_input_wpol,recursive_credit_per_1_hard,productive_liquidity_multiplier,marginal_liquidity_from_50,total_productive_liquidity_at_100,HF_30pct_shock,hardnav_retention_30pct
+base,50,100,0.2829931972789116,2.165986394557823,108.29931972789115,216.5986394557823,1.6733200530681511,0.8693280212272605
+aggressive_stress_safe,50,100,0.47816091954023,2.55632183908046,127.816091954023,255.632183908046,1.2871692715908853,0.8693280212272605

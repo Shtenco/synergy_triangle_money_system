@@ -1,28 +1,34 @@
 {
-  "version": "V3-recursive-collateral",
-  "primaryHardAsset": "WPOL",
-  "secondaryHardAsset": "COLL",
-  "softAssets": ["RUBX", "RUBZ"],
+  "version": "V4-input-dollar-multiplier",
+  "objective": "maximize productive liquidity created by each incoming hard WPOL without counting internal credit as HardNAV",
+  "assets": {
+    "hard": ["WPOL", "COLL"],
+    "soft": ["RUBX", "RUBZ"]
+  },
   "pools": ["RUBX/WPOL", "RUBZ/WPOL", "RUBX/RUBZ", "RUBX/COLL", "RUBZ/COLL"],
   "initialHardNAV_WPOL": 50,
-  "retainedIncomingHardCapital_WPOL": 50,
-  "primaryDeploymentFraction": 0.5,
-  "reserveFloorFraction": 0.2,
-  "lpCollateralFactor": 0.65,
-  "reuseFraction": 0.5,
+  "retainedIncomingHard_WPOL": 50,
+  "hardNAVImmediatelyAfterInput_WPOL": 100,
+  "reserveFloor": 0.20,
+  "hardDeployment": 0.80,
   "recursiveLpValueFraction": 0.25,
-  "minimumHealthFactor": 1.25,
-  "ammFee": 0.003,
-  "netExternalCapture": 0.0027,
-  "baselineTurnoverX": 75,
-  "hardDeployedPerHardNAV": 0.6768707482993197,
-  "hardPoolTvlPerHardNAV": 1.3537414965986394,
-  "secondOrderMultiplier75x": 1.377662191607507,
-  "immediateHardNAV_WPOL": 100,
-  "firstOrderHardNAV75x_WPOL": 113.70663265306122,
-  "recursiveFinalHardNAV75x_WPOL": 118.88310958037535,
-  "stress20Retention": 0.9285408537720519,
-  "stress30Retention": 0.8894399499329287,
-  "stress20HealthFactor": 1.7888543819998322,
-  "stress30HealthFactor": 1.6733200530681513
+  "base": {
+    "lpCollateralFactor": 0.65,
+    "reuse": 0.50,
+    "recursiveCreditPer1HardNAV": 0.2829931972789116,
+    "productiveLiquidityMultiplier": 2.165986394557823,
+    "marginalLiquidityFrom50": 108.29931972789115,
+    "totalLiquidityAt100HardNAV": 216.5986394557823,
+    "healthFactor30Shock": 1.6733200530681511
+  },
+  "aggressiveStressSafe": {
+    "lpCollateralFactor": 0.80,
+    "reuse": 0.65,
+    "recursiveCreditPer1HardNAV": 0.47816091954023,
+    "productiveLiquidityMultiplier": 2.55632183908046,
+    "marginalLiquidityFrom50": 127.816091954023,
+    "totalLiquidityAt100HardNAV": 255.632183908046,
+    "healthFactor30Shock": 1.2871692715908853
+  },
+  "stress30HardNAVRetention": 0.8693280212272605
 }

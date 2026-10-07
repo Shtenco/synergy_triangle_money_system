@@ -5,27 +5,39 @@ contract EconomicModel {
     uint256 internal constant WAD=1e18;
     uint256 internal constant BPS=10000;
 
-    function baselineDeployedWad() public pure returns(uint256 deployed,uint256 secondary){
-        uint256 primary=0.5e18;
-        uint256 first=primary*6500/BPS*5000/BPS;
-        uint256 ratio=WAD*6500/BPS*5000/BPS*2500/BPS;
-        secondary=first*WAD/(WAD-ratio);
-        deployed=primary+secondary;
-        uint256 maxDeploy=0.8e18;
-        if(deployed>maxDeploy)deployed=maxDeploy;
-    }
+    function liquidityMultiplierWad(
+        uint256 deployBps,
+        uint256 collateralFactorBps,
+        uint256 reuseBps,
+        uint256 recursiveTierValueBps
+    ) public pure returns(uint256 multiplierWad,uint256 recursiveCreditWad){
+        require(deployBps<=8000,"DEPLOY");
+        require(collateralFactorBps<=8000,"CF");
+        require(reuseBps<=6500,"REUSE");
+        require(recursiveTierValueBps<=5000,"TIER");
 
-    function multiplierWad(uint256 turnoverXWad) public pure returns(uint256){
-        (uint256 deployed,)=baselineDeployedWad();
-        uint256 tvlPerHard=2*deployed;
-        uint256 volumePerHard=tvlPerHard*turnoverXWad/WAD;
-        uint256 q=volumePerHard*27/BPS;
+        uint256 deployed=deployBps*WAD/BPS;
+        uint256 firstCredit=deployed*collateralFactorBps/BPS*reuseBps/BPS;
+        uint256 q=collateralFactorBps*reuseBps*recursiveTierValueBps*WAD/(BPS*BPS*BPS);
         require(q<WAD,"UNSTABLE");
-        return WAD*WAD/(WAD-q);
+
+        recursiveCreditWad=firstCredit*WAD/(WAD-q);
+        multiplierWad=2*(deployed+recursiveCreditWad);
     }
 
-    function scenario50Plus50At75x() external pure returns(uint256 finalHardNavWad){
-        uint256 m=multiplierWad(75e18);
-        finalHardNavWad=50e18+50e18*m/WAD;
+    function baseline() external pure returns(uint256 m,uint256 credit){
+        return liquidityMultiplierWad(8000,6500,5000,2500);
+    }
+
+    function aggressiveStressSafe() external pure returns(uint256 m,uint256 credit){
+        return liquidityMultiplierWad(8000,8000,6500,2500);
+    }
+
+    function hardNavAfterRetainedInput(uint256 initialHard,uint256 incomingHard) external pure returns(uint256){
+        return initialHard+incomingHard;
+    }
+
+    function hardNavAfterYield(uint256 hardNav,uint256 yieldBps) external pure returns(uint256){
+        return hardNav + hardNav*yieldBps/BPS;
     }
 }

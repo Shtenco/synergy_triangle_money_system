@@ -1,56 +1,40 @@
 from math import sqrt
 
-PRIMARY = 0.50
-CF = 0.65
-REUSE = 0.50
-RECURSIVE_TIER = 0.25
 RESERVE_FLOOR = 0.20
-CAPTURE = 0.0027
+DEPLOY = 0.80
+RECURSIVE_TIER = 0.25
+MIN_HF = 1.25
 
-first_credit = PRIMARY * CF * REUSE
-credit_ratio = CF * REUSE * RECURSIVE_TIER
-secondary_credit = first_credit / (1.0 - credit_ratio)
-deployed = min(PRIMARY + secondary_credit, 1.0 - RESERVE_FLOOR)
-tvl_per_hard = 2.0 * deployed
+def model(cf, reuse):
+    q = cf * reuse * RECURSIVE_TIER
+    first_credit = DEPLOY * cf * reuse
+    recursive_credit = first_credit / (1 - q)
+    productive_liquidity = 2 * (DEPLOY + recursive_credit)
+    return recursive_credit, productive_liquidity
 
-def multiplier(turnover):
-    q = tvl_per_hard * turnover * CAPTURE
-    if q >= 1.0:
-        raise ValueError("unstable recursive regime")
-    return 1.0 / (1.0 - q)
+def hardnav_retention(shock_price):
+    return RESERVE_FLOOR + DEPLOY * sqrt(shock_price)
 
-def stress_retention(shock_price):
-    return (1.0 - deployed) + deployed * sqrt(shock_price)
+def health_factor(shock_price, reuse):
+    return sqrt(shock_price) / reuse
 
-def health_factor(shock_price):
-    eligible = (PRIMARY + secondary_credit * RECURSIVE_TIER) * CF
-    return eligible * sqrt(shock_price) / secondary_credit
+for name, cf, reuse in [
+    ("BASE", 0.65, 0.50),
+    ("AGGRESSIVE_STRESS_SAFE", 0.80, 0.65),
+]:
+    credit, mult = model(cf, reuse)
+    print(name)
+    print("recursive_credit_per_1_hardnav", credit)
+    print("productive_liquidity_multiplier", mult)
+    print("marginal_productive_liquidity_for_50", 50 * mult)
+    print("total_productive_liquidity_for_100_hardnav", 100 * mult)
+    print("HF_20pct_shock", health_factor(0.80, reuse))
+    print("HF_30pct_shock", health_factor(0.70, reuse))
+    print()
 
-print("primary_deployment", PRIMARY)
-print("first_credit", first_credit)
-print("recursive_credit_ratio", credit_ratio)
-print("secondary_credit_converged", secondary_credit)
-print("hard_deployed_per_hardnav", deployed)
-print("free_hard_reserve", 1.0 - deployed)
-print("hard_pool_tvl_per_hardnav", tvl_per_hard)
+print("hardnav_50_plus_50", 100.0)
+print("hardnav_retention_20pct_shock", hardnav_retention(0.80))
+print("hardnav_retention_30pct_shock", hardnav_retention(0.70))
 
-for t in [5,10,20,30,50,75,100]:
-    print("turnover", t, "multiplier", multiplier(t))
-
-m75 = multiplier(75)
-initial = 50.0
-incoming_retained = 50.0
-final_hnav = initial + incoming_retained * m75
-first_order = initial + incoming_retained * (1.0 + tvl_per_hard * 75 * CAPTURE)
-
-print("50+50 immediate_hardnav", initial + incoming_retained)
-print("50+50 first_order_hardnav_75x", first_order)
-print("50+50 recursive_final_hardnav_75x", final_hnav)
-
-flow_only_seed = 50.0 * CAPTURE
-print("50 flow-only recursive contribution", flow_only_seed * m75)
-print("50 flow-only final_hardnav", initial + flow_only_seed * m75)
-
-for shock in [0.80,0.70]:
-    r = stress_retention(shock)
-    print("shock", shock, "retention", r, "health_factor", health_factor(shock), "mature_50_50_hnav", final_hnav*r)
+for y in [0.05,0.10,0.20]:
+    print("hardnav_after_real_yield", y, 100*(1+y))
