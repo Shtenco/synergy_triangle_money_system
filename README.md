@@ -289,3 +289,140 @@ Productive liquidity capacity:
 255.6321839080 WPOL-equivalent в агрессивном режиме.
 
 HardNAV выше 100 появляется только из фактически реализованного hard-income.
+
+
+## V5 — HardNAV multiplier engine
+
+V5 adds a concrete mechanism that converts internal collateral capacity into real hard-asset income without requiring an external DEX.
+
+The mechanism is:
+
+1. Every 1 WPOL of protocol HardNAV creates a bounded soft-credit capacity.
+2. With the aggressive stress-safe settings:
+   - hard deployment = 80%
+   - collateral factor = 80%
+   - reuse = 65%
+   - soft-credit capacity = 0.416 RUBX/RUBZ-equivalent per 1 WPOL HardNAV.
+3. An external borrower must post 150% WPOL collateral.
+4. The borrower receives RUBX or RUBZ principal.
+5. On repayment, the soft principal is returned and burned.
+6. Interest is paid in WPOL.
+7. Borrower collateral is returned and is never counted as protocol Net HardNAV.
+8. Only earned WPOL interest enters Treasury realised revenue and increases HardNAV.
+
+### Per 1 WPOL HardNAV
+
+Credit capacity:
+
+0.416.
+
+At 80% utilization:
+
+0.3328 RUBX/RUBZ-equivalent is actually lent.
+
+At 5% hard-denominated interest per credit cycle:
+
+0.01664 WPOL real hard income.
+
+Therefore the credit engine alone gives:
+
+1.00000 -> 1.01664 HardNAV per completed credit cycle
+
+provided that 80% utilization is actually achieved and borrowers really pay the 5% WPOL interest.
+
+### Adding real yield-bearing collateral
+
+If the entire 1 WPOL HardNAV is held in a wrapper or strategy that really earns 1% hard yield over the same economic cycle, then:
+
+yield income = 0.01000 WPOL
+
+credit income = 0.01664 WPOL
+
+total hard income = 0.02664 WPOL
+
+so:
+
+1.00000 -> 1.02664 HardNAV.
+
+If only the 80% deployed hard-capital earns the 1% yield while the 20% reserve earns zero, then:
+
+yield income = 0.00800 WPOL
+
+credit income = 0.01664 WPOL
+
+total hard income = 0.02464 WPOL
+
+so the stricter multiplier is:
+
+1.00000 -> 1.02464 HardNAV.
+
+### 50 + 50 WPOL case
+
+Start:
+
+50 WPOL HardNAV.
+
+Retained new input:
+
++50 WPOL.
+
+Immediate HardNAV:
+
+100 WPOL.
+
+At the aggressive stress-safe V5 credit settings:
+
+credit capacity = 41.6 RUBX/RUBZ-equivalent.
+
+At 80% utilization:
+
+33.28 is lent.
+
+At 5% hard-interest:
+
+credit income = 1.664 WPOL.
+
+If all 100 WPOL also earns 1% real hard yield during the same cycle:
+
+yield income = 1.000 WPOL.
+
+End-of-cycle HardNAV:
+
+102.664 WPOL.
+
+If only 80 WPOL of the 100 WPOL earns 1% real yield:
+
+yield income = 0.800 WPOL.
+
+End-of-cycle HardNAV:
+
+102.464 WPOL.
+
+These values are the current concrete V5 HardNAV multipliers.
+
+They do not depend on an assumed 75x trading turnover.
+
+They do depend on two real external economic events:
+
+- an external borrower paying WPOL interest;
+- a real hard-yield source if the yield component is enabled.
+
+The external DEX is optional. The external payer of hard value is not.
+
+### What V5 still needs before production use
+
+The current V5 research branch must still add and test:
+
+- borrower liquidation;
+- collateral-price shocks;
+- bad-debt accounting;
+- partial repayment;
+- interest accrual over time;
+- maximum loan duration;
+- oracle failure handling;
+- reentrancy protection;
+- emergency pause;
+- borrower collateral segregation;
+- stress testing of simultaneous RUBX/RUBZ depeg plus borrower default.
+
+Until those tests are GREEN, V5 is a research prototype rather than a production lending protocol.
