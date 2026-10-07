@@ -32,22 +32,22 @@ contract V8Test {
     );
 
     function testCompare() public {
-        S memory a=_deploy(8500,1000);
+        S memory a=_deploy(8000,7500);
         S memory b=_deploy(5000,5000);
         S memory c=_deploy(10000,10000);
 
         _run(a);_run(b);_run(c);
 
         _check(a);_check(b);_check(c);
-        _emit("85/10",a);_emit("50/50",b);_emit("100/100",c);
+        _emit("80/75",a);_emit("50/50",b);_emit("100/100",c);
 
         uint256 ma=_m(a);uint256 mb=_m(b);uint256 mc=_m(c);
-        require(ma>mb,"85/10 <= 50/50");
-        require(ma>mc,"85/10 <= 100/100");
+        require(ma>mb,"80/75 <= 50/50");
+        require(ma>mc,"80/75 <= 100/100");
     }
 
     function testDownBlockBurns() public {
-        S memory s=_deploy(8500,1000);
+        S memory s=_deploy(8000,7500);
         _buy(s,2e16,1e16);
         s.mm.step();
         uint256 beforeBurn=s.mm.burnedX()+s.mm.burnedZ();
