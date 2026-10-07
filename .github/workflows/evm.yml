@@ -1,0 +1,20 @@
+name: EVM V3
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  foundry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Forge tests
+        run: forge test -vvv
+      - name: Numerical reference model
+        run: python3 model/simulate.py

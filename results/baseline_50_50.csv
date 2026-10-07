@@ -1,0 +1,8 @@
+scenario,hardnav_wpol
+initial,50
+after_retained_50_input,100
+after_first_order_75x,113.70663265306122
+after_recursive_convergence_75x,118.88310958037535
+after_recursive_convergence_then_20pct_shock,110.38782406883813
+after_recursive_convergence_then_30pct_shock,105.73938703303993
+flow_only_50_input_final_75x,50.18598439586702
