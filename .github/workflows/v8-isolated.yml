@@ -7,11 +7,12 @@ on:
 jobs:
   evm:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/foundry-rs/foundry:stable
     steps:
       - uses: actions/checkout@v4
-      - uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
+      - name: Foundry version
+        run: forge --version
       - name: Run isolated V8 EVM tests
         shell: bash
         working-directory: v8
