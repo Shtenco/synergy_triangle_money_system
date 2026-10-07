@@ -70,8 +70,8 @@ contract V9AdaptiveTest {
     function testHighTvlHardReducesEmission() public {
         S memory s = _deploy();
 
-        (uint256 eLow,,) = _emitOnly(s, 100, 24e17, 2_000);
-        (uint256 eHigh,,) = _emitOnly(s, 100, 40e17, 2_000);
+        (uint256 eLow,) = s.mm.policyForState(100, 24e17, 2_000);
+        (uint256 eHigh,) = s.mm.policyForState(100, 40e17, 2_000);
 
         require(eLow > eHigh, "TVL_FEEDBACK_NOT_WORKING");
     }
@@ -108,16 +108,6 @@ contract V9AdaptiveTest {
             s.mm.burnedX() + s.mm.burnedZ() > beforeBurn,
             "NO_BUY_BURN"
         );
-    }
-
-    function _emitOnly(
-        S memory s,
-        uint256 moveBps,
-        uint256 tvlHard,
-        uint256 treasuryRatio
-    ) internal pure returns (uint256 emitBps, uint256 buyBps, uint256 marker) {
-        (emitBps, buyBps) = s.mm.policyForState(moveBps, tvlHard, treasuryRatio);
-        marker = 1;
     }
 
     function _deploy() internal returns (S memory s) {
