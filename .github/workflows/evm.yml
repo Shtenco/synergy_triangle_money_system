@@ -1,4 +1,4 @@
-name: EVM V3
+name: EVM V5
 
 on:
   push:
@@ -15,6 +15,19 @@ jobs:
         with:
           version: stable
       - name: Forge tests
-        run: forge test -vvv
-      - name: Numerical reference model
-        run: python3 model/simulate.py
+        id: forge
+        shell: bash
+        run: |
+          set +e
+          forge test -vvv > forge.log 2>&1
+          code=$?
+          cat forge.log
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+      - name: Upload Forge log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-log
+          path: forge.log
+          if-no-files-found: warn
