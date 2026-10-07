@@ -33,37 +33,63 @@ Remaining:
 - symbolic execution;
 - adversarial adapter mocks.
 
-## M4 — Stochastic V5
+## M4 — Controlled Structural Edge Governor
 Next.
 
-Replace constant opportunities with:
-- stochastic edge;
-- stochastic gas;
-- stochastic MEV;
-- stochastic capacity;
-- missed fills;
-- edge decay;
-- competition;
-- regime shifts.
+Ключевая корректировка: структурный edge внутреннего треугольника НЕ моделируется как внешний случайный edge.
 
-Optimize median and lower-tail canonical dividends rather than deterministic best-case multiplier.
+Он является управляемой переменной системы:
+
+- target structural edge epsilon_target;
+- mint/burn SYNA/SYNR/SUSD;
+- weighted rebalance;
+- depth control;
+- D_high / D_low;
+- safe_cycle_pct;
+- replenishment.
+
+Цель Governor:
+
+1. удерживать structural edge около epsilon_target;
+2. не допускать истощения canonical LP;
+3. разрешать цикл только если canonical settlement после всех издержек не ухудшает HardNAV;
+4. после цикла восстанавливать глубину и повторно создавать target geometry.
+
+Стохастическими остаются только внешние условия реализации:
+- gas;
+- MEV;
+- external conversion slippage;
+- fill quality;
+- latency;
+- bridge delay;
+- canonical market prices.
+
+Не stochastic:
+- внутренний target edge;
+- mint/burn policy;
+- target depth ratios;
+- owner-controlled cycle geometry.
 
 ## M5 — Polygon Mainnet Fork
 
 - fixed block;
 - exactly 100 WPOL starting capital;
-- actual WETH/WPOL/USDC pools;
+- internal triangle edge controlled by system policy;
+- actual WETH/WPOL/USDC external pools used only for canonical settlement/valuation;
 - executable quotes;
 - gas estimates;
 - fork-only transactions;
 - repeated snapshot/revert.
 
 Metrics:
+- maintained internal structural edge;
+- canonical extracted per cycle;
+- canonical replenished per cycle;
 - final residual WPOL-equivalent;
 - owner dividend WPOL-equivalent;
 - max drawdown;
 - failed-fill rate;
-- realized net edge;
+- realized settlement costs;
 - multiplier distribution.
 
 ## M6 — Security audit gate
@@ -84,8 +110,8 @@ Maximize:
 canonical dividends + residual canonical HardNAV
 
 subject to:
-- finite external capacity;
-- positive realized net alpha;
+- internal structural edge is owner/system-controlled;
+- canonical settlement remains solvent;
 - no double counting;
 - no internal-token mark inflation;
 - explicit downside controls.
