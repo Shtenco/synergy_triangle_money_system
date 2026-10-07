@@ -13,7 +13,7 @@ contract AdaptiveMM {
     uint256 public constant EMIT_MAX_BPS = 7_480;       // 74.8% before TVL feedback
     uint256 public constant BUY_MIN_BPS = 200;          // 2%
     uint256 public constant BUY_MAX_BPS = 6_000;        // 60% before treasury feedback
-    uint256 public constant TARGET_TVL_HARD_WAD = 3_55e16 * 100; // 3.55e18
+    uint256 public constant TARGET_TVL_HARD_WAD = 355e16;        // 3.55e18
     uint256 public constant TVL_GAIN_WAD = 8e17;        // 0.80
     uint256 public constant TARGET_TREASURY_BPS = 40;   // 0.40% of HardNAV
     uint256 public constant TREASURY_BOOST_WAD = 3e17;  // 0.30
