@@ -9,13 +9,15 @@ import "../src/RiskOracle.sol";
 import "../src/CollateralVault.sol";
 import "../src/RecursiveEngine.sol";
 import "../src/EconomicModel.sol";
+import "../src/HardRevenueEngine.sol";
 
 contract SystemTest {
     uint256 constant W=1e18;
 
     SoftToken x; SoftToken z;
     MockHardToken wpol; MockHardToken coll;
-    Treasury treasury; RiskOracle oracle; CollateralVault vault; RecursiveEngine engine; EconomicModel model;
+    Treasury treasury; RiskOracle oracle; CollateralVault vault;
+    RecursiveEngine engine; EconomicModel model; HardRevenueEngine revenue;
     CPMMPool xw; CPMMPool zw; CPMMPool xz; CPMMPool xc; CPMMPool zc;
 
     function setUp() public {
@@ -33,17 +35,29 @@ contract SystemTest {
         xc=new CPMMPool(address(x),address(coll),30);
         zc=new CPMMPool(address(z),address(coll),30);
 
-        engine=new RecursiveEngine(address(x),address(z),address(wpol),address(coll),address(treasury),address(vault),address(xw),address(zw),address(xz),address(xc),address(zc));
+        engine=new RecursiveEngine(
+            address(x),address(z),address(wpol),address(coll),
+            address(treasury),address(vault),
+            address(xw),address(zw),address(xz),address(xc),address(zc)
+        );
         model=new EconomicModel();
+        revenue=new HardRevenueEngine(
+            address(wpol),address(x),address(z),
+            address(treasury),address(engine)
+        );
 
         x.setMinter(address(engine),true);
         z.setMinter(address(engine),true);
+        x.setMinter(address(revenue),true);
+        z.setMinter(address(revenue),true);
+
         treasury.setOperator(address(engine),true);
         treasury.setOperator(address(vault),true);
         vault.setOperator(address(engine));
 
         oracle.setPrice(address(wpol),W);
         oracle.setPrice(address(coll),W);
+
         vault.setHardToken(address(wpol),true);
         vault.setHardToken(address(coll),true);
         vault.configurePool(address(xw),6500);
@@ -66,9 +80,14 @@ contract SystemTest {
 
         wpol.transfer(address(treasury),12.5e18);
         coll.transfer(address(treasury),12.5e18);
+
+        revenue.setBorrower(address(this),true);
+        revenue.setRisk(8000,8000,6500,15000);
     }
 
-    function testInitialHardNavIs50() public { require(engine.hardNav()==50e18,"HNAV_50"); }
+    function testInitialHardNavIs50() public {
+        require(engine.hardNav()==50e18,"HNAV_50");
+    }
 
     function testRetained50CapitalMakesExactly100() public {
         wpol.approve(address(treasury),50e18);
@@ -89,21 +108,67 @@ contract SystemTest {
         require(engine.hardNav()==beforeNav+5e18,"EXT_REVENUE");
     }
 
-    function testBaseLiquidityMultiplier() public {
-        (uint256 m,uint256 credit)=model.baseline();
-        require(m>2165e15 && m<2167e15,"BASE_M");
-        require(credit>282e15 && credit<284e15,"BASE_C");
+    function testAggressiveCreditCapacityIs416Per1HardNav() public {
+        uint256 cap=revenue.creditCapacity();
+        require(cap==20.8e18,"CAP_50");
     }
 
-    function testAggressiveStressSafeLiquidityMultiplier() public {
-        (uint256 m,uint256 credit)=model.aggressiveStressSafe();
-        require(m>2556e15 && m<2557e15,"AGG_M");
-        require(credit>478e15 && credit<479e15,"AGG_C");
+    function testBorrowerCollateralIsNotCountedAsProtocolHardNav() public {
+        uint256 beforeNav=engine.hardNav();
+        uint256 principal=16.64e18; // 80% utilization of 20.8 capacity
+        uint256 collateralNeeded=revenue.requiredBorrowerCollateral(principal);
+
+        wpol.approve(address(revenue),collateralNeeded);
+        revenue.borrowSoft(address(x),principal,500);
+
+        require(engine.hardNav()==beforeNav,"BORROWER_COLLATERAL_COUNTED");
+        require(revenue.outstandingSoftPrincipal()==principal,"PRINCIPAL");
     }
 
-    function testHardNavYieldIsSeparateFromLiquidityMultiplier() public {
-        require(model.hardNavAfterRetainedInput(50e18,50e18)==100e18,"INPUT");
-        require(model.hardNavAfterYield(100e18,1000)==110e18,"YIELD");
+    function testCreditInterestCreatesRealHardNav() public {
+        uint256 beforeNav=engine.hardNav();
+        uint256 principal=16.64e18;
+        uint256 collateralNeeded=revenue.requiredBorrowerCollateral(principal);
+        uint256 interest=principal*500/10000; // 5% = 0.832 WPOL
+
+        wpol.approve(address(revenue),collateralNeeded);
+        revenue.borrowSoft(address(x),principal,500);
+
+        x.approve(address(revenue),principal);
+        wpol.approve(address(revenue),interest);
+        revenue.repay();
+
+        require(engine.hardNav()==beforeNav+interest,"INTEREST_HNAV");
+        require(revenue.outstandingSoftPrincipal()==0,"DEBT_NOT_CLOSED");
+    }
+
+    function testYieldPlusCreditMakes102664Multiplier() public {
+        uint256 beforeNav=engine.hardNav(); // 50 WPOL
+        uint256 principal=16.64e18;         // 80% utilization
+        uint256 collateralNeeded=revenue.requiredBorrowerCollateral(principal);
+        uint256 interest=principal*500/10000; // 0.832 WPOL = 1.664% of 50
+        uint256 yieldAmount=beforeNav/100;     // 1% = 0.5 WPOL
+
+        wpol.approve(address(revenue),collateralNeeded);
+        revenue.borrowSoft(address(x),principal,500);
+
+        x.approve(address(revenue),principal);
+        wpol.approve(address(revenue),interest);
+        revenue.repay();
+
+        wpol.approve(address(revenue),yieldAmount);
+        revenue.accrueExternalYield(yieldAmount);
+
+        uint256 expected=beforeNav + interest + yieldAmount;
+        require(engine.hardNav()==expected,"MULTIPLIER_HNAV");
+
+        uint256 m=model.baseOneCycleMultiplierWad();
+        require(m==1.02664e18,"MODEL_102664");
+    }
+
+    function testNoBorrowerNoCreditIncome() public {
+        uint256 beforeNav=engine.hardNav();
+        require(engine.hardNav()==beforeNav,"NO_FREE_INCOME");
     }
 
     function _seed(CPMMPool p,uint256 a0,uint256 a1,address to) internal {
