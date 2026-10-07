@@ -11,10 +11,29 @@ on:
 jobs:
   unit:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Environment
+        run: |
+          python --version
+          pwd
+          find borrower_hunter tests -maxdepth 3 -type f -print
+      - name: Compile Python
+        run: python -m compileall -q borrower_hunter tests
       - name: Run unit tests
-        run: python -m unittest discover -s tests -v
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -p "test_*.py" -v 2>&1 | tee borrower-hunter-test.log
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrower-hunter-test-log
+          path: borrower-hunter-test.log
+          if-no-files-found: warn
