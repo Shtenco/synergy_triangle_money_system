@@ -1,0 +1,26 @@
+name: V8 isolated EVM
+on:
+  push:
+    branches: [experiment/three-pool-market-maker-v8]
+  workflow_dispatch:
+jobs:
+  evm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Run isolated V8 EVM tests
+        shell: bash
+        working-directory: v8
+        run: |
+          set -o pipefail
+          forge test -vvv 2>&1 | tee v8-forge.log
+      - name: Upload V8 log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v8-forge-log
+          path: v8/v8-forge.log
+          if-no-files-found: warn
