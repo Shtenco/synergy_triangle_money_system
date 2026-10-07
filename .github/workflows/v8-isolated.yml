@@ -2,6 +2,7 @@ name: V8 isolated EVM
 on:
   push:
     branches: [experiment/three-pool-market-maker-v8]
+  pull_request:
   workflow_dispatch:
 jobs:
   evm:
