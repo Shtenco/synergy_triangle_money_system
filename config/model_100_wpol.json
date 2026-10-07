@@ -1,0 +1,47 @@
+{
+  "initial_wpol": 100,
+  "mode": "research_simulation_and_polygon_fork",
+  "internal_tokens": [
+    "SYNA",
+    "SYNR",
+    "SUSD"
+  ],
+  "canonical_assets": [
+    "WPOL",
+    "WETH",
+    "USDC"
+  ],
+  "agents": [
+    "ARBITRAGE",
+    "BRIDGE",
+    "RISK"
+  ],
+  "base_utilization": 0.9,
+  "qe_gain": 0.35,
+  "engines": {
+    "arbitrage": {
+      "gross_edge": 0.03,
+      "capacity_wpol": 500
+    },
+    "bridge": {
+      "gross_edge": 0.008,
+      "capacity_wpol": 300
+    },
+    "fee_flow": {
+      "gross_edge": 0.003,
+      "capacity_wpol": 700
+    }
+  },
+  "modeled_results": {
+    "100_cycles": {
+      "target_working_wpol": 325,
+      "dividends_wpol": 381.648458,
+      "residual_wpol": 325
+    },
+    "1000_cycles": {
+      "target_working_wpol": 975,
+      "dividends_wpol": 10901.517042,
+      "residual_wpol": 975
+    }
+  }
+}
