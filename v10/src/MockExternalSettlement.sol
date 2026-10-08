@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "../v9/src/Token.sol";
+import "../../v9/src/Token.sol";
 
 contract MockExternalSettlement {
     Token public immutable x;
