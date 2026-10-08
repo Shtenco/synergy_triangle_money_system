@@ -84,6 +84,43 @@ contract GraphArbHardNavEngine {
         internalArbProfitUSDC += profit;
     }
 
+
+    function crystallizeUZXToExternal(
+        uint256 internalUSDC,
+        address settlement,
+        uint256 minExternalUSDC
+    ) external returns (uint256 externalUSDC) {
+        require(internalUSDC > 0, "AMOUNT");
+
+        uint256 beforeHard = hardNav();
+
+        u.approve(address(zu), internalUSDC);
+        uint256 zOut = zu.swapExactIn(
+            address(u),
+            internalUSDC,
+            address(this)
+        );
+
+        z.approve(address(xz), zOut);
+        uint256 xOut = xz.swapExactIn(
+            address(z),
+            zOut,
+            address(this)
+        );
+
+        x.approve(settlement, xOut);
+        externalUSDC = IExternalSettlement(settlement)
+            .sellXForUSDC(xOut, address(this));
+
+        require(externalUSDC >= minExternalUSDC, "SETTLEMENT_TOO_LOW");
+        externalSettlementUSDC += externalUSDC;
+
+        require(
+            hardNav() >= beforeHard + externalUSDC,
+            "HARDNAV_DID_NOT_CAPTURE_EXTERNAL"
+        );
+    }
+
     function crystallizeXToExternal(
         uint256 internalUSDC,
         address settlement,
