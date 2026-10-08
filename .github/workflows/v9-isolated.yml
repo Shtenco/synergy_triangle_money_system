@@ -1,0 +1,19 @@
+name: V9 isolated EVM
+on:
+  push:
+    branches:
+      - experiment/adaptive-market-maker-v9
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  evm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Run V9 Foundry tests
+        working-directory: v9
+        run: forge test -vvv

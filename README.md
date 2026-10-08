@@ -1,3 +1,174 @@
+# SYNERGY V11 — Integrated Block Revenue & HardNAV Engine
+
+Текущая архитектура репозитория — V11. Она объединяет V7 Block Revenue Engine, V6 Borrower Hunter, V9 Adaptive Market Maker и V10 Graph Arbitrage HardNAV Engine в одну систему выбора лучшего способа заработать реальный hard-asset income на каждом блоке.
+
+## Что система делает на каждом блоке
+
+Новый блок рассматривается как задача распределения капитала.
+
+Движок собирает кандидатов из нескольких независимых источников дохода:
+
+- graph external settlement: внутренний треугольник RUBX/RUBZ/hard asset создаёт переоценку, которая кристаллизуется во внешний USDC/WPOL через RFQ/aggregator/external venue;
+- borrower refinance: Borrower Hunter ищет дорогой DeFi-долг и предлагает более выгодную ставку;
+- own flash lending: свободный Treasury reserve выдаётся во flash loan и зарабатывает external fee;
+- flash-funded arbitrage: Morpho/Aave flash liquidity используется только если после repayment, premium, gas и slippage остаётся положительный hard PnL;
+- flash-funded liquidation: аналогично, в HardNAV засчитывается только чистый liquidation profit;
+- real collateral yield: фактически полученный hard-yield.
+
+Все возможности приводятся к единому объекту Opportunity и сравниваются по чистому ожидаемому HardNAV-profit.
+
+## Главное правило V11
+
+Один и тот же WPOL/USDC не может одновременно:
+
+- быть выданным внешнему flash borrower;
+- финансировать наш graph-settlement;
+- финансировать liquidation;
+- финансировать arbitrage;
+- использоваться в другом несовместимом atomic route.
+
+Unified Revenue Allocator резервирует hard-capital только за выбранным набором операций текущего блока.
+
+Closed internal graph-arbitrage вида USDC -> Z -> X -> USDC не считается доходом, даже если отдельный arb wallet получил прибыль. Если все три ребра принадлежат протоколу, consolidated HardNAV остаётся тем же.
+
+HardNAV-producing graph route обязан иметь внешний settlement-edge.
+
+## Порядок обработки блока
+
+1. Получить новые external swaps и состояние трёх/пяти пулов.
+2. Сначала запустить Graph Arb Scanner.
+3. Если есть executable external hard-settlement с положительным net PnL — сформировать graph opportunity.
+4. Получить Borrower Hunter refinance candidates.
+5. Получить external flash-loan demand.
+6. Получить flash-funded arbitrage/liquidation candidates.
+7. Учесть real collateral yield.
+8. Unified Revenue Allocator сравнивает все opportunities.
+9. Отклоняет stale, negative-PnL, low-confidence и превышающие capital limits.
+10. Резервирует капитал лучшим операциям.
+11. Исполняет только выбранные atomic routes.
+12. Проверяет consolidated HardNAV before/after.
+13. Только после этого V9 Adaptive MM стабилизирует оставшийся ценовой дисбаланс.
+14. Остаточный hard-surplus может идти в ADDLP / reserve / BUY+BURN.
+
+Именно такой порядок важен: если V9 сначала полностью погасит переоценку MINT/BURN, он уничтожит часть graph-arbitrage opportunity до того, как та будет превращена во внешний hard asset.
+
+## Доходные каналы V11
+
+### 1. Graph Arbitrage + External Settlement
+
+Внутренние пулы создают amount-aware graph. Движок ищет маршрут, например:
+
+USDC -> RUBZ -> RUBX -> external USDC
+
+Внутренние ребра только перераспределяют активы протокола.
+
+Последнее внешнее ребро приносит реальный hard asset.
+
+На детерминированном V10-примере первичный внешний 0.10 USDC flow открыл дополнительный внешний settlement примерно 0.0252 USDC, то есть совокупный hard-flow multiplier около 1.25x для конкретного сценария.
+
+Это не гарантированная доходность: сила эффекта определяется реальной внешней executable capacity, slippage, gas и MEV.
+
+### 2. Borrower Refinance / Credit
+
+Borrower Hunter сканирует Morpho и Euler discovery-источники, нормализует существующие borrow positions и ранжирует кандидатов по:
+
+- текущему borrow APY;
+- предлагаемой SYNERGY ставке;
+- health factor;
+- collateral coverage;
+- размеру позиции;
+- gas/cost edge;
+- доступной protocol credit capacity.
+
+HardNAV увеличивается только на реально оплаченный hard-interest.
+
+### 3. Own Flash Lending
+
+Свободный hard reserve может быть использован внутри одной транзакции через FlashLiquidityLender.
+
+Principal обязан вернуться в той же транзакции.
+
+В HardNAV записывается только external flash fee.
+
+### 4. External Flash Funding
+
+AtomicRevenueExecutor умеет работать с Morpho/Aave-style flash funding.
+
+Маршрут исполняется только если:
+
+final hard balance >= repayment + premium + minProfit.
+
+Если условие не выполняется, транзакция должна revert.
+
+### 5. Liquidation / Arbitrage
+
+Любой liquidation или external arbitrage считается доходом только после:
+
+- funding fee;
+- gas;
+- slippage;
+- premium;
+- safety buffer.
+
+Internal circular fee между нашими же контрактами не считается доходом.
+
+### 6. Real Collateral Yield
+
+Только фактически начисленный hard-yield увеличивает HardNAV.
+
+## Актуальные модули
+
+Core collateral / accounting:
+- src/Treasury.sol
+- src/CollateralVault.sol
+- src/RecursiveEngine.sol
+- src/HardRevenueEngine.sol
+
+V7 revenue:
+- src/FlashLiquidityLender.sol
+- src/AtomicRevenueExecutor.sol
+- block_revenue/
+
+Borrower acquisition:
+- borrower_hunter/
+
+V9 adaptive stabilization:
+- v9/src/AdaptiveMM.sol
+- v9/test/V9.t.sol
+
+V10 graph HardNAV:
+- v10/src/GraphArbHardNavEngine.sol
+- v10/src/MockExternalSettlement.sol
+- v10/test/V10GraphArb.t.sol
+
+V11 unification:
+- unified_revenue/allocator.py
+- tests/test_unified_revenue.py
+- docs/V11_INTEGRATED_REVENUE_ENGINE.md
+
+## Главный экономический принцип
+
+V11 больше не пытается заставить один механизм делать всё.
+
+Каждый hard-dollar может выполнять разные функции во времени:
+
+- collateral;
+- LP capital;
+- refinance capacity;
+- flash inventory;
+- graph-arb capital;
+- liquidation capital;
+- yield-bearing reserve.
+
+Но один и тот же hard-dollar нельзя одновременно считать размещённым в несовместимых операциях.
+
+На каждом блоке система выбирает лучший доступный положительный net-HardNAV канал.
+
+---
+
+
+## Историческая collateral-модель и расчёты
+
 # SYNERGY Recursive Collateral Money System — current architecture
 
 Этот репозиторий содержит только текущую версию системы. Главная задача системы — найти честный множитель на каждый входящий hard-доллар/WPOL без подмены внутреннего оборота внешним доходом.

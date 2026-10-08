@@ -1,0 +1,33 @@
+name: V11 Integrated Revenue Engine
+on:
+  push:
+    branches:
+      - experiment/integrated-revenue-engine-v11
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python
+        run: python -m compileall -q borrower_hunter block_revenue unified_revenue tests
+      - name: Run Python tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  v10-foundry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Run V10 graph HardNAV tests
+        working-directory: v10
+        run: forge test -vvv
