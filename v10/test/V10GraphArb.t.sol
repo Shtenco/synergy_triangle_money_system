@@ -70,45 +70,36 @@ contract V10GraphArbTest {
         uint256 startHard = arb.hardNav();
         require(startHard == 1e18, "START");
 
-        // Primary incoming flow: outside buyer pays 0.10 USDC for X.
+        // Primary outside demand: 0.10 USDC enters X/USDC.
         u.approve(address(xu), 1e17);
         xu.swapExactIn(address(u), 1e17, address(this));
 
         uint256 afterPrimary = arb.hardNav();
         require(afterPrimary == 11e17, "PRIMARY_INPUT");
 
-        // Move internal protocol USDC through U -> Z -> X.
-        // The USDC remains inside the consolidated protocol balance.
-        uint256 internalU = 28995e12;
-
-        u.transfer(address(arb), internalU);
-        uint256 hardBeforeRoute = arb.hardNav();
-
-        // First edge U -> Z.
-        // The engine route itself is tested separately in production code;
-        // this test focuses on conservation plus external settlement.
-        // Give arb temporary execution inventory and settle X externally.
-        uint256 beforeExternal = arb.hardNav();
-
-        // Reference path target from the deterministic CPMM model:
-        // 0.028995 U -> about 0.025186 X via U->Z->X.
-        uint256 expectedExternalHard = 25186e12;
-
-        // Inject exactly the externally-settled hard amount to represent
-        // executable outside RFQ capacity at 1 USDC/X.
-        u.transfer(address(venue), 0);
-        u.mint(address(arb), expectedExternalHard);
+        // Graph route uses only protocol-owned USDC internally:
+        // U -> Z -> X, then the final X is sold to an OUTSIDE RFQ at 1 USDC/X.
+        // Internal U movement is HardNAV-neutral; only RFQ settlement adds hard value.
+        uint256 externalHard = arb.crystallizeUZXToExternal(
+            28995e12,
+            address(venue),
+            2518e13
+        );
 
         uint256 finalHard = arb.hardNav();
 
-        require(hardBeforeRoute == beforeExternal, "INTERNAL_ROUTE_CHANGED_HARD");
-        require(finalHard > afterPrimary, "NO_EXTRA_HARD");
+        require(externalHard > 2518e13, "EXTERNAL_HARD_TOO_SMALL");
+        require(finalHard > 1125e15, "FINAL_HARD_TOO_LOW");
 
         uint256 primaryInput = 1e17;
         uint256 totalGain = finalHard - startHard;
         uint256 multiplierWad = totalGain * 1e18 / primaryInput;
 
         require(multiplierWad > 125e16, "MULTIPLIER_LT_1_25X");
+
+        // The extra >1.0 multiplier is explicitly paid by the external RFQ.
+        uint256 accountingDiff = totalGain - primaryInput - externalHard;
+        require(accountingDiff < 1e7, "FLOW_ACCOUNTING");
     }
 
     function _seed(
