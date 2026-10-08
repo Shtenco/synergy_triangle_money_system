@@ -1,0 +1,19 @@
+name: V10 Graph Arb EVM
+on:
+  push:
+    branches:
+      - experiment/graph-arb-hardnav-v10
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  evm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Run V10 graph-arb tests
+        working-directory: v10
+        run: forge test -vvv
