@@ -1,3 +1,10 @@
+<!-- SCIENTIFIC-V5-2026:START -->
+<img src="assets/readme/scientific-architecture-v5.svg" width="100%" alt="Recursive Collateral Money System research architecture"/>
+
+**[Научное досье V5](docs/SCIENTIFIC_DOSSIER_V5_2026.md)** — source inventory, acceptance gates, ограничения и проверки. **Статус:** SIMULATION / EVM LAB. Исторический текст README сохранён ниже.
+
+<!-- SCIENTIFIC-V5-2026:END -->
+
 # SYNERGY Recursive Collateral Money System — current architecture
 
 Этот репозиторий содержит только текущую версию системы. Главная задача системы — найти честный множитель на каждый входящий hard-доллар/WPOL без подмены внутреннего оборота внешним доходом.
